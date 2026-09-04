@@ -1,0 +1,113 @@
+name: CI/CD - NEXUS Core and Components
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'components/**'
+      - '.github/workflows/ci-cd-main.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'components/**'
+      - '.github/workflows/ci-cd-main.yml'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v35
+        with:
+          dir_names: true
+          dir_names_max_depth: 2
+          files: |
+            components/**
+
+      - name: Set matrix for build
+        id: set-matrix
+        run: |
+          raw_matrix=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^components/' | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          echo "Detected components: $raw_matrix"
+          echo "matrix=$raw_matrix" >> $GITHUB_OUTPUT
+
+  deploy-infra:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.matrix != '[]' && needs.detect-changes.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    env:
+      GCP_PROJECT_ID: ${{ github.ref == 'refs/heads/main' && secrets.REQUIRED_GCP_PROJECT_ID_PROD || secrets.REQUIRED_GCP_PROJECT_ID_DEV }}
+      WORKING_DIR: components/${{ matrix.component }}
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER_ID }}
+          service_account: gh-actions-deployer@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.WORKING_DIR }}
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color -var="gcp_project_id=${{ env.GCP_PROJECT_ID }}"
+
+      - name: Comment PR with Plan
+        if: github.event_name == 'pull_request' && steps.plan.outcome == 'success'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `Terraform Plan for `${{ matrix.component }}` (${{ env.GCP_PROJECT_ID }}):
+            
+            ```            Plan: ${{ steps.plan.outputs.planned_outcomes }}            ```
+            
+            Pushed by: @${{ github.actor }}`
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Apply
+        working-directory: ${{ env.WORKING_DIR }}
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && github.event_name == 'push'
+        run: terraform apply -auto-approve -var="gcp_project_id=${{ env.GCP_PROJECT_ID }}"
