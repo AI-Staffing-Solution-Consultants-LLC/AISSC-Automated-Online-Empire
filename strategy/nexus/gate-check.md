@@ -35,7 +35,7 @@
 | Agent | Role | Priority |
 |-------|------|----------|
 | **Agents Orchestrator** | Pipeline Execution & Quality Loop Management | Immediate |
-| **Sheryl (Gateway)** | Intent Routing & Auth Finalization | Immediate (Task T1) |
+| **Sheryl (Gateway)** | Intent Routing & Auth Finalization | Complete (Task T1) |
 | **Krieger (Lead Engineer)** | Systems & Secret Manager Integration | Immediate (Task T2) |
 | **Malory (Ops Auditor)** | Business Ops & Compliance Layer | Follow-on (Task T3) |
 | **Pam (Workforce)** | Task Dispatch & Telemetry | Follow-on (Task T4) |

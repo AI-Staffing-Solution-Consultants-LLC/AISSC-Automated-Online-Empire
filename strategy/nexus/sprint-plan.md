@@ -4,7 +4,7 @@
 
 | Sprint Phase | Component | Assigned Agent | Estimated Duration | Dependencies | Milestone Target |
 |--------------|-----------|----------------|--------------------|--------------|------------------|
-| Sprint 3.1 | **Sheryl Gateway** | Frontend / Gateway Dev | 4 Hours | Phase 2 Foundation | OIDC Auth validation, Intent Router, 403 Security Gate |
+| Sprint 3.1 | **Sheryl Gateway** | Gateway Developer | 4 Hours | Phase 2 Foundation | ✅ OIDC Auth validation, Intent Router, 403 Security Gate |
 | Sprint 3.2 | **Krieger Infrastructure** | Backend Architect | 4 Hours | Sheryl Gateway | Secret Manager integration, GCS FUSE memory mount verification |
 | Sprint 3.3 | **Malory Business Ops** | Workflow / Compliance Dev | 3 Hours | Krieger Infrastructure | Compliance audit rules, P95 SLA monitoring, audit logging |
 | Sprint 3.4 | **Pam Workforce** | Systems Integrator | 3 Hours | Malory Business Ops | Hybrid task router, Pub/Sub completion event fan-out |
@@ -20,11 +20,11 @@
            └───────────┬────────────┘
                        │
            ┌───────────▼────────────┐
-           │   T1: Sheryl Gateway   │
+           │   T1: Sheryl Gateway   │ (✅ PASS)
            └───────────┬────────────┘
                        │
            ┌───────────▼────────────┐
-           │ T2: Krieger Infra      │
+           │ T2: Krieger Infra      │ (🔄 IN PROGRESS)
            └───────────┬────────────┘
                        │
            ┌───────────▼────────────┐
@@ -47,7 +47,7 @@
 ### 1. Sheryl Gateway (`T1-SHERYL`)
 - **Metric**: `HTTP 200` on valid `/dispatch` payload; `HTTP 403` on unauthorized code execution attempt.
 - **SLA**: Response time < 100ms.
-- **QA Gate**: Pass OIDC token verification test and security gate assertion.
+- **QA Gate**: Pass OIDC token verification test and security gate assertion. (Status: ✅ PASSED)
 
 ### 2. Krieger Infrastructure (`T2-KRIEGER`)
 - **Metric**: Successful fetch of GSM keys & GCS FUSE mount detection (`/gs/aissc-persistent-memory-store`).
