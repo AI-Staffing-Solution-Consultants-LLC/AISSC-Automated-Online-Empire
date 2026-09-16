@@ -7,16 +7,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment & Secrets (Infisical / Local GSM config)
-.env
-.env.local
-.env.*.local
+.env*
 *.pem
 credentials.json
 
 # Terraform State & Local Overrides
 .terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 crash.log
 *.tfvars
 
@@ -31,3 +29,5 @@ cron/runs/*.jsonl
 # OS Files
 .DS_Store
 Thumbs.db
+gcp-telemetry.json
+.gcp-telemetry.cursor

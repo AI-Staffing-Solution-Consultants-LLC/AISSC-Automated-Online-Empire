@@ -1,0 +1,88 @@
+[
+  {
+    "id": "KAN-01",
+    "title": "Reconcile mcp-router-config.json with live services",
+    "state": "todo",
+    "assignee": "Sheryl",
+    "labels": ["config"]
+  },
+  {
+    "id": "KAN-02",
+    "title": "Stage OpenViking GCS FUSE mount validation",
+    "state": "todo",
+    "assignee": "Krieger",
+    "labels": ["terraform"]
+  },
+  {
+    "id": "KAN-03",
+    "title": "Review telemetry bridge cap at 500 entries",
+    "state": "todo",
+    "assignee": "Krieger",
+    "labels": ["telemetry"]
+  },
+  {
+    "id": "KAN-04",
+    "title": "Map GCS memory bucket access",
+    "state": "todo",
+    "assignee": "Sheryl",
+    "labels": ["storage"]
+  },
+  {
+    "id": "KAN-05",
+    "title": "Pull Cloud Run severity>=ERROR telemetry",
+    "state": "in_progress",
+    "assignee": "Sheryl",
+    "labels": ["telemetry"]
+  },
+  {
+    "id": "KAN-06",
+    "title": "Barry lead-gen readiness before Sep 10",
+    "state": "in_progress",
+    "assignee": "Pam",
+    "due": "2026-09-10",
+    "labels": ["barry", "p0"]
+  },
+  {
+    "id": "KAN-07",
+    "title": "Confirm LITE_LLM_KEY IAM scoping",
+    "state": "in_progress",
+    "assignee": "Krieger",
+    "due": "2026-09-08",
+    "labels": ["iam"]
+  },
+  {
+    "id": "KAN-08",
+    "title": "Mirror sheryl-gateway code into monorepo",
+    "state": "in_progress",
+    "assignee": "Sheryl",
+    "labels": ["reconcile"]
+  },
+  {
+    "id": "KAN-09",
+    "title": "Defer grant filing pending QA gate",
+    "state": "done",
+    "assignee": "Malory",
+    "labels": ["held"]
+  },
+  {
+    "id": "KAN-10",
+    "title": "Rewrite CI/CD pipeline with dorny paths-filter",
+    "state": "done",
+    "assignee": "Krieger",
+    "labels": ["ci"]
+  },
+  {
+    "id": "KAN-11",
+    "title": "Validate Terraform module (no apply)",
+    "state": "done",
+    "assignee": "Krieger",
+    "labels": ["terraform"]
+  },
+  {
+    "id": "KAN-12",
+    "title": "Generate NEXUS micro docs",
+    "state": "done",
+    "assignee": "Pam",
+    "labels": ["nexus"]
+  }
+]

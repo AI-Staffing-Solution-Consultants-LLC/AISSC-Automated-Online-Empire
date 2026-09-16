@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "aissc-telemetry-resolver": {
+      "command": "node",
+      "args": [
+        "/home/josh/AISSC-Automated-Online-Empire/monitoring-telemetry-remediation/gcp-telemetry-bridge.mjs"
+      ],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "suad-claw-nexus-hybrid-01",
+        "GCS_TARGET_BUCKET": "aissc-persistent-memory-store",
+        "TELEMETRY_JSON_PATH": "/home/josh/AISSC-Automated-Online-Empire/monitoring-telemetry-remediation/gcp-telemetry.json",
+        "CURSOR_PATH": "/home/josh/AISSC-Automated-Online-Empire/monitoring-telemetry-remediation/.gcp-telemetry.cursor"
+      },
+      "resources": [
+        {
+          "uri": "file:///home/josh/AISSC-Automated-Online-Empire/monitoring-telemetry-remediation/gcp-telemetry.json",
+          "name": "AISSC Real-Time Cloud Telemetry Log",
+          "mimeType": "application/json",
+          "description": "Capped buffer of the 500 most recent container crash logs, stack traces, and automated remediation actions across all SUAD services."
+        }
+      ],
+      "tools": [
+        {
+          "name": "force_remediation_audit",
+          "description": "Manually triggers the telemetry bridge to run an on-demand poll against Google Cloud Logging, updating the local json sink.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "number",
+                "description": "The maximum number of recent logs to extract. Defaults to 100.",
+                "minimum": 1,
+                "maximum": 500
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

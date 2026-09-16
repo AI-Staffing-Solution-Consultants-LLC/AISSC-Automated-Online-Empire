@@ -3,20 +3,13 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
   }
 }
 
-variable "gcp_project_id" {
-  type        = string
-  description = "Target Google Cloud Project ID"
-}
-
-variable "gcp_region" {
-  type        = string
-  description = "Default GCP Region"
-  default     = "us-central1"
+locals {
+  krieger_image = var.suad_image != "" ? var.suad_image : "us-east4-docker.pkg.dev/${var.gcp_project_id}/nexus/krieger:latest"
 }
 
 provider "google" {
@@ -30,12 +23,16 @@ resource "google_service_account" "krieger_sa" {
   display_name = "Krieger Tech Systems SUAD Runner"
 }
 
-# 1. GCS Bucket for OpenViking RAG Memory
+# 1. OpenViking GCS FUSE Bucket - persistent shared memory across scale-to-zero cycles
 resource "google_storage_bucket" "openviking_rag" {
   name                        = "suad-openviking-rag-${var.gcp_project_id}"
   location                    = "US"
   uniform_bucket_level_access = true
   force_destroy               = false
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Storage Permissions for FUSE Mount
@@ -45,13 +42,15 @@ resource "google_storage_bucket_iam_member" "openviking_access" {
   member = "serviceAccount:${google_service_account.krieger_sa.email}"
 }
 
-# 2. Cloud Run Service with SUAD Scale-to-Zero and GCS FUSE Mount
+# 2. Scale-to-Zero Cloud Run Service with GCS FUSE Mount (strict SUAD physics)
 resource "google_cloud_run_v2_service" "suad_service" {
   name     = "krieger-tech-systems"
   location = var.gcp_region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+
     scaling {
       min_instance_count = 0
       max_instance_count = 5
@@ -68,7 +67,7 @@ resource "google_cloud_run_v2_service" "suad_service" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.gcp_project_id}/nexus/krieger:latest"
+      image = local.krieger_image
 
       resources {
         limits = {
@@ -93,9 +92,15 @@ resource "google_cloud_run_v2_service" "suad_service" {
       }
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+    ]
+  }
 }
 
-# 3. Cloud Tasks Queue (Command Bus)
+# 3. Google Cloud Tasks Command Bus (rate-limited, no sleep loops)
 resource "google_cloud_tasks_queue" "command_bus" {
   name     = "queue-krieger-inbox"
   location = var.gcp_region
@@ -104,14 +109,20 @@ resource "google_cloud_tasks_queue" "command_bus" {
     max_dispatches_per_second = 3
     max_concurrent_dispatches = 2
   }
+
+  retry_config {
+    max_attempts = 3
+  }
 }
 
-# 4. Pub/Sub Topic (Event Bus)
+# 4. Google Cloud Pub/Sub Event Bus (1-to-Many task completion fan-out)
 resource "google_pubsub_topic" "event_bus" {
   name = "suad-task-completions"
+
+  message_retention_duration = "86400s"
 }
 
-# 5. Secret Manager IAM Binding for OIDC Service Accounts
+# 5. Secret Manager IAM Binding - LITE_LLM_KEY scoped strictly to Krieger SA
 resource "google_secret_manager_secret_iam_member" "secret_access" {
   secret_id = "LITE_LLM_KEY"
   role      = "roles/secretmanager.secretAccessor"

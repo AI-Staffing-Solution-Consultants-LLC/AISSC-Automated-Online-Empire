@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS Fleet</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">N</div>
+      <h1>NEXUS Fleet</h1>
+    </div>
+    <div class="topbar-right">
+      <div id="clock" class="clock">--:--:-- UTC</div>
+      <div class="status-pill">OPS NOMINAL</div>
+    </div>
+  </header>
+
+  <main id="board" class="board">
+    <section class="column" data-state="question">
+      <h2 class="column-title">Questions for Sheryl</h2>
+      <div class="cards"></div>
+    </section>
+    <section class="column" data-state="todo">
+      <h2 class="column-title">Pending Actions</h2>
+      <div class="cards"></div>
+    </section>
+    <section class="column" data-state="in_progress">
+      <h2 class="column-title">In Progress</h2>
+      <div class="cards"></div>
+    </section>
+    <section class="column" data-state="done">
+      <h2 class="column-title">Done</h2>
+      <div class="cards"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden">jobs.json requires an http server</div>
+
+  <script>
+    const AVATAR_COLORS = ['#5E6AD2', '#4C9E8A', '#C98BDB', '#DB8B5E', '#5E9ED2', '#A3B84C', '#D25E7C'];
+    const CLOCK_EL = document.getElementById('clock');
+
+    function updateClock() {
+      const now = new Date();
+      CLOCK_EL.textContent = now.toUTCString().split(' ')[4] + ' UTC';
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    function initials(name) {
+      return name.split(/[\s-]+/).map(function (p) { return p[0] || ''; }).slice(0, 2).join('').toUpperCase();
+    }
+
+    function avatarColor(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+      return AVATAR_COLORS[h % AVATAR_COLORS.length];
+    }
+
+    function makeCard(job) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = job.title;
+
+      const meta = document.createElement('div');
+      meta.className = 'card-meta';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar';
+      avatar.style.background = avatarColor(job.assignee);
+      avatar.textContent = initials(job.assignee);
+
+      const assignee = document.createElement('span');
+      assignee.className = 'assignee';
+      assignee.textContent = job.assignee;
+
+      const right = document.createElement('span');
+      right.className = 'card-right';
+
+      if (job.labels && job.labels.length) {
+        job.labels.forEach(function (label) {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = label;
+          right.appendChild(chip);
+        });
+      }
+      if (job.due) {
+        const due = document.createElement('span');
+        due.className = 'due';
+        due.textContent = job.due;
+        right.appendChild(due);
+      }
+
+      meta.appendChild(avatar);
+      meta.appendChild(assignee);
+      meta.appendChild(right);
+      card.appendChild(title);
+      card.appendChild(meta);
+      return card;
+    }
+
+    function render(data) {
+      document.querySelectorAll('.cards').forEach(function (container) {
+        container.innerHTML = '';
+      });
+      data.forEach(function (job) {
+        const target = document.querySelector('.column[data-state="' + job.state + '"] .cards');
+        if (target) target.appendChild(makeCard(job));
+      });
+    }
+
+    fetch('./data/jobs.json')
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(render)
+      .catch(function () {
+        document.getElementById('toast').classList.remove('hidden');
+      });
+  </script>
+</body>
+</html>

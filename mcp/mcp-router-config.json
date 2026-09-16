@@ -1,0 +1,61 @@
+{
+  "$schema": "./mcp-router-config.schema.json",
+  "version": "1.1.0",
+  "project": "AISSC-Automated-Online-Empire",
+  "router": {
+    "mode": "bidirectional",
+    "default_timeout_ms": 45000,
+    "retry": { "max_attempts": 3, "backoff_ms": 1000 }
+  },
+  "registered_tools": {
+    "telemetry-bridge": {
+      "type": "local-script",
+      "path": "./scripts/gcp-telemetry-bridge.mjs",
+      "description": "Pulls Cloud Run errors (severity>=ERROR) into gcp-telemetry.json, capped at 500 entries",
+      "invoke": ["node", "scripts/gcp-telemetry-bridge.mjs"],
+      "read_only": false,
+      "side_effect": "appends error telemetry to local gitignored sink"
+    },
+    "sheryl-gateway": {
+      "type": "http",
+      "base_url": "https://sheryl-agent-398899866173.us-east4.run.app",
+      "endpoints": {
+        "telegram_webhook": "/telegram-webhook",
+        "health": "/healthz"
+      },
+      "auth": "OIDC",
+      "identity_service_account": "sheryl-gateway@suad-claw-nexus-hybrid-01.iam.gserviceaccount.com"
+    },
+    "krieger-inbox": {
+      "type": "gcp-cloud-tasks",
+      "queue": "projects/suad-claw-nexus-hybrid-01/locations/us-east4/queues/queue-krieger-inbox",
+      "description": "Command bus for tactical SUAD dispatches (3/s, max 2 concurrent)"
+    },
+    "event-bus": {
+      "type": "gcp-pubsub",
+      "topic": "projects/suad-claw-nexus-hybrid-01/topics/suad-task-completions",
+      "description": "1-to-Many task completion event fan-out"
+    }
+  },
+  "dispatch": {
+    "backend": "google-cloud-tasks",
+    "queue": {
+      "project": "suad-claw-nexus-hybrid-01",
+      "location": "us-east4",
+      "name": "queue-krieger-inbox"
+    },
+    "routing": {
+      "strategy": "intent-based",
+      "targets": [
+        { "intent": "operational", "service": "krieger", "deadline_ms": 60000 },
+        { "intent": "lead-gen", "service": "barry", "deadline_ms": 60000 },
+        { "intent": "business-ops", "service": "malory", "deadline_ms": 120000 }
+      ]
+    }
+  },
+  "events": {
+    "backend": "google-cloud-pubsub",
+    "topic": "projects/suad-claw-nexus-hybrid-01/topics/suad-task-completions",
+    "publish_on": ["task_complete", "task_failed", "intent_dispatched"]
+  }
+}

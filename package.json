@@ -1,0 +1,19 @@
+{
+  "name": "aissc-automated-online-empire-core",
+  "version": "2.2.0",
+  "description": "Unified Serverless SUAD Micro-Runtime for AISSC Manager Agents",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "zod": "^3.23.8",
+    "@google-cloud/storage": "^7.11.2",
+    "jose": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -16,63 +16,73 @@ on:
       - 'components/**'
       - '.github/workflows/ci-cd-main.yml'
 
+# Least-privilege permissions: read contents, request OIDC id-token for GCP auth.
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      changed: ${{ steps.filter.outputs.changed }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Check for changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v35
+      # dorny/paths-filter: secure path-filtering. Replaces tj-actions/changed-files
+      # (which had a known supply-chain compromise in March 2025).
+      - name: Detect changed components
+        id: filter
+        uses: dorny/paths-filter@v3
         with:
-          dir_names: true
-          dir_names_max_depth: 2
-          files: |
-            components/**
+          filters: |
+            sheryl-gateway:
+              - 'components/sheryl-gateway/**'
+            krieger-tech-systems:
+              - 'components/krieger-tech-systems/**'
+            malory-business-ops:
+              - 'components/malory-business-ops/**'
+            pam-workforce:
+              - 'components/pam-workforce/**'
+            kanban-dashboard:
+              - 'components/kanban-dashboard/**'
 
-      - name: Set matrix for build
-        id: set-matrix
-        run: |
-          raw_matrix=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^components/' | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n")[:-1]')
-          echo "Detected components: $raw_matrix"
-          echo "matrix=$raw_matrix" >> $GITHUB_OUTPUT
-
+  # Per-component matrix deploy. Independent path-filtering means a change to one
+  # component never triggers a rebuild/deploy of another (no cross-service collisions).
   deploy-infra:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.matrix != '[]' && needs.detect-changes.outputs.matrix != '' }}
+    if: ${{ needs.detect-changes.outputs.changed != '[]' && needs.detect-changes.outputs.changed != '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        component: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+        component: ${{ fromJson(needs.detect-changes.outputs.changed) }}
 
     env:
       GCP_PROJECT_ID: ${{ github.ref == 'refs/heads/main' && secrets.REQUIRED_GCP_PROJECT_ID_PROD || secrets.REQUIRED_GCP_PROJECT_ID_DEV }}
       WORKING_DIR: components/${{ matrix.component }}
 
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         id: auth
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER_ID }}
           service_account: gh-actions-deployer@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.5.0
+          terraform_version: 1.16.1
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform fmt -check -recursive
 
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
@@ -90,16 +100,16 @@ jobs:
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request' && steps.plan.outcome == 'success'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `Terraform Plan for `${{ matrix.component }}` (${{ env.GCP_PROJECT_ID }}):
-            
-            ```            Plan: ${{ steps.plan.outputs.planned_outcomes }}            ```
-            
-            Pushed by: @${{ github.actor }}`
-            
+            const output = `Terraform Plan for \`${{ matrix.component }}\` (${{ env.GCP_PROJECT_ID }}):
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            Pushed by: @${{ github.actor }}`;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -111,3 +121,49 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && github.event_name == 'push'
         run: terraform apply -auto-approve -var="gcp_project_id=${{ env.GCP_PROJECT_ID }}"
+
+  # Non-Terraform components (gateway, workforce, kanban) deploy via Cloud Run source or static hosting.
+  deploy-apps:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.changed != '[]' && needs.detect-changes.outputs.changed != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJson(needs.detect-changes.outputs.changed) }}
+
+    env:
+      GCP_PROJECT_ID: ${{ github.ref == 'refs/heads/main' && secrets.REQUIRED_GCP_PROJECT_ID_PROD || secrets.REQUIRED_GCP_PROJECT_ID_DEV }}
+      WORKING_DIR: components/${{ matrix.component }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER_ID }}
+          service_account: gh-actions-deployer@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Build and Deploy Cloud Run (gcloud source deploy)
+        working-directory: ${{ env.WORKING_DIR }}
+        if: matrix.component == 'sheryl-gateway' || matrix.component == 'pam-workforce'
+        run: |
+          SERVICE_NAME="aissc-${{ matrix.component }}"
+          gcloud run deploy "${SERVICE_NAME}" \
+            --project "${{ env.GCP_PROJECT_ID }}" \
+            --region us-east4 \
+            --source . \
+            --quiet \
+            --allow-unauthenticated
+
+      - name: Deploy Kanban Dashboard to Cloud Storage
+        working-directory: ${{ env.WORKING_DIR }}
+        if: matrix.component == 'kanban-dashboard'
+        run: |
+          BUCKET="aissc-kanban-${{ env.GCP_PROJECT_ID }}"
+          gsutil -m rsync -d ./ gs://"${BUCKET}" 2>/dev/null || \
+            (gsutil mb -p "${{ env.GCP_PROJECT_ID }}" -l us-east4 "gs://${BUCKET}" && \
+             gsutil iam ch allUsers:objectViewer "gs://${BUCKET}" && \
+             gsutil -m rsync -d ./ gs://"${BUCKET}")

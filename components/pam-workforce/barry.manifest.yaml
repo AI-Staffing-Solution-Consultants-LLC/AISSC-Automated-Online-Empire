@@ -1,0 +1,41 @@
+# Barry Worker Manifest - AISSC Lead Generation
+# Component: pam-workforce
+# Priority: P0 - LIVE before 2026-09-10
+
+worker: barry
+host: lobehub
+status: RUNNING
+target_status: DEPLOYED-RECONCILED
+priority: p0
+deadline: 2026-09-10
+function: lead-generation
+
+inputs:
+  - bus: google-cloud-pubsub
+    topic: suad-task-completions
+    event_type: intent_dispatched
+    idempotency_key: REQUIRED
+
+outputs:
+  - event: lead_qualified
+    bus: google-cloud-pubsub
+    topic: suad-task-completions
+  - event: lead_rejected
+    bus: google-cloud-pubsub
+    topic: suad-task-completions
+
+dependencies:
+  litellm_proxy: https://suad-litellm-proxy-398899866173.us-east4.run.app/v1
+  model: gemini-flash
+
+constraints:
+  - no_self_modification
+  - no_grant_filings_until_qa_pass
+  - no_financial_commitments_until_qa_pass
+  - rate_limit_enforced_via_cloud_tasks
+
+reconciliation:
+  source_of_truth: components/pam-workforce/barry.manifest.yaml
+  live_container: lobehub-container-barry (port 8089)
+  safety: DO NOT restart or mutate running container until dry-run verification completes
+  qa_gate: strategy/nexus/handoffs/qa-pass.md

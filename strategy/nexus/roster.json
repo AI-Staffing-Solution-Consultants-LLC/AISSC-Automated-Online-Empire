@@ -1,0 +1,119 @@
+{
+  "project": "AISSC-Automated-Online-Empire",
+  "mode": "micro",
+  "scenario": "startup-mvp",
+  "duration": "4-6 weeks",
+  "spec": "[PATH TO SPEC]",
+  "blueprint_ref": "none",
+  "generated": "2026-09-04T21:59:53.199Z",
+  "roster": [
+  {
+    "group": "Core Team",
+    "activation": "always",
+    "agents": [
+      {
+        "slug": "agents-orchestrator",
+        "name": "Agents Orchestrator",
+        "installed": true
+      },
+      {
+        "slug": "project-manager-senior",
+        "name": "Senior Project Manager",
+        "installed": true
+      },
+      {
+        "slug": "product-sprint-prioritizer",
+        "name": "Sprint Prioritizer",
+        "installed": true
+      },
+      {
+        "slug": "design-ux-architect",
+        "name": "UX Architect",
+        "installed": true
+      },
+      {
+        "slug": "engineering-frontend-developer",
+        "name": "Frontend Developer",
+        "installed": true
+      },
+      {
+        "slug": "engineering-backend-architect",
+        "name": "Backend Architect",
+        "installed": true
+      },
+      {
+        "slug": "engineering-devops-automator",
+        "name": "DevOps Automator",
+        "installed": true
+      },
+      {
+        "slug": "testing-evidence-collector",
+        "name": "Evidence Collector",
+        "installed": true
+      },
+      {
+        "slug": "testing-reality-checker",
+        "name": "Reality Checker",
+        "installed": true
+      }
+    ]
+  },
+  {
+    "group": "Growth Team",
+    "activation": "week 3+",
+    "agents": [
+      {
+        "slug": "marketing-growth-hacker",
+        "name": "Growth Hacker",
+        "installed": true
+      },
+      {
+        "slug": "marketing-content-creator",
+        "name": "Content Creator",
+        "installed": true
+      },
+      {
+        "slug": "marketing-social-media-strategist",
+        "name": "Social Media Strategist",
+        "installed": true
+      }
+    ]
+  },
+  {
+    "group": "Support Team",
+    "activation": "as needed",
+    "agents": [
+      {
+        "slug": "design-brand-guardian",
+        "name": "Brand Guardian",
+        "installed": true
+      },
+      {
+        "slug": "support-analytics-reporter",
+        "name": "Analytics Reporter",
+        "installed": true
+      },
+      {
+        "slug": "engineering-rapid-prototyper",
+        "name": "Rapid Prototyper",
+        "installed": true
+      },
+      {
+        "slug": "engineering-ai-engineer",
+        "name": "AI Engineer",
+        "installed": true
+      },
+      {
+        "slug": "testing-performance-benchmarker",
+        "name": "Performance Benchmarker",
+        "installed": true
+      },
+      {
+        "slug": "support-infrastructure-maintainer",
+        "name": "Infrastructure Maintainer",
+        "installed": true
+      }
+    ]
+  }
+]
+}
